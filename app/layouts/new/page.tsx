@@ -1,10 +1,10 @@
 import { ThemeToggler } from "@/components/ThemeToggler";
-import FlyerList from "@/components/dashboard/FlyerList";
+import FlyerZoneBuilder from "@/components/editor/FlyerZoneBuilder";
 
-export default function Home() {
+export default function NewLayoutPage() {
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
-      <FlyerList />
+      <FlyerZoneBuilder />
       <div className="fixed bottom-5 right-6">
         <ThemeToggler />
       </div>
