@@ -54,7 +54,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
     selectedZoneId,
     setShowGuides,
     setIsExporting,
-    setFlyerImage,
+    setFlyer,
     setZones,
     setPlacements,
     computeInitialPlacement,
@@ -64,11 +64,15 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
     handleSelectZone,
   } = editorState;
 
+  // console.log("Flyer: ", flyer);
+
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
         const layout = await loadFlyerLayout(layoutId);
+        // console.log("Loaded layout", layout);
+
         if (!layout) {
           throw new Error("Flyer introuvable");
         }
@@ -79,7 +83,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
 
         const flyerUrl = URL.createObjectURL(layout.flyerBlob);
         flyerUrlRef.current = flyerUrl;
-        setFlyerImage({
+        setFlyer({
           url: flyerUrl,
           width: layout.meta.width,
           height: layout.meta.height,
@@ -87,25 +91,31 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
         });
         setZones(layout.zones);
 
+        placementDataRef.current.clear();
+        placementUrlsRef.current.forEach((value) => URL.revokeObjectURL(value));
+        placementUrlsRef.current.clear();
+
+        const normalizedPlacements: Record<
+          string,
+          (typeof placements)[string]
+        > = {};
         if (layout.placements && layout.placements.length > 0) {
-          const nextPlacements = layout.placements.map((placement) => {
-            const storedData =
-              placementDataRef.current.get(placement.zoneId) ?? placement.url;
-            if (storedData?.startsWith("data:")) {
-              placementDataRef.current.set(placement.zoneId, storedData);
-              const blob = dataUrlToBlob(storedData);
+          layout.placements.forEach((placement) => {
+            let resolvedUrl = placement.url;
+            if (placement.url.startsWith("data:")) {
+              placementDataRef.current.set(placement.zoneId, placement.url);
+              const blob = dataUrlToBlob(placement.url);
               const objectUrl = URL.createObjectURL(blob);
               placementUrlsRef.current.set(placement.zoneId, objectUrl);
-              return { ...placement, url: objectUrl };
+              resolvedUrl = objectUrl;
             }
-            return placement;
+            normalizedPlacements[placement.zoneId] = {
+              ...placement,
+              url: resolvedUrl,
+            };
           });
-          setPlacements(() =>
-            Object.fromEntries(
-              nextPlacements.map((item) => [item.zoneId, item])
-            )
-          );
         }
+        setPlacements(() => normalizedPlacements);
         setSelectedZoneId(layout.zones.at(0)?.id ?? null);
       } catch (loadError) {
         console.error(loadError);
@@ -124,7 +134,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
     return () => {
       cancelled = true;
     };
-  }, [layoutId, setFlyerImage, setPlacements, setSelectedZoneId, setZones]);
+  }, [layoutId, setFlyer, setPlacements, setSelectedZoneId, setZones]);
 
   useEffect(() => {
     const placementUrls = placementUrlsRef.current;
@@ -231,6 +241,8 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
   ]);
 
   const handleExport = useCallback(async () => {
+    console.log("Exporting...", { flyer, stageRef });
+
     if (!flyer || !stageRef.current) return;
 
     setIsExporting(true);
@@ -459,7 +471,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
                 <h2 className="text-lg font-semibold">Insertion photo</h2>
                 <p className="text-sm text-muted-foreground">
                   {selectedZoneId
-                    ? "Déposez une image pour l&apos;associer à la zone."
+                    ? "Déposez une image pour l'associer à la zone."
                     : "Sélectionnez une zone pour importer une image."}
                 </p>
               </div>

@@ -303,7 +303,7 @@ export function FlyerEditor() {
       if (currentPoints.length < MIN_POINTS) {
         return "Tracez une zone fermée avec au moins trois points distincts.";
       }
-      return "Dessinez une forme fermée d&apos;un seul geste pour enregistrer la zone.";
+      return "Dessinez une forme fermée d'un seul geste pour enregistrer la zone.";
     }
     if (zones.length === 0) {
       return "Aucune zone définie. Lancez le mode dessin pour délimiter un emplacement.";
@@ -499,7 +499,7 @@ export function FlyerEditor() {
                 <h2 className="text-lg font-semibold">Insertion photo</h2>
                 <p className="text-sm text-muted-foreground">
                   {selectedZoneId
-                    ? "Déposez une image pour l&apos;insérer dans la zone choisie."
+                    ? "Déposez une image pour l'insérer dans la zone choisie."
                     : "Sélectionnez une zone pour y associer une image."}
                 </p>
               </div>

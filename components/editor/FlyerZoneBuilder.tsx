@@ -1,3 +1,15 @@
+/**
+ * Composant FlyerZoneBuilder
+ * -------------------------
+ * Objectif : Permettre l'import d'une image de flyer et le dessin de zones interactives dessus
+ *
+ * Fonctionnalités principales :
+ * 1. Import d'image via drag-and-drop (react-dropzone)
+ * 2. Dessin de zones polygonales sur l'image (Konva)
+ * 3. Gestion des états de l'éditeur (dessin, zones, etc.)
+ * 4. Sauvegarde du layout (image + zones)
+ */
+
 "use client";
 
 import Link from "next/link";
@@ -16,6 +28,17 @@ import type { FlyerLayout, Zone } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { saveFlyerLayout } from "@/lib/storage/flyers";
 
+/**
+ * Interface décrivant un layout existant
+ * @property id - Identifiant unique du layout
+ * @property name - Nom donné au layout
+ * @property flyerBlob - Données binaires de l'image
+ * @property width/height - Dimensions de l'image
+ * @property fileName - Nom du fichier original
+ * @property zones - Tableau des zones définies sur l'image
+ * @property createdAt - Date de création
+ * @property placements - Optionnel : positions des photos dans les zones
+ */
 interface ExistingLayout {
   id: string;
   name: string;
@@ -33,6 +56,16 @@ interface FlyerZoneBuilderProps {
 }
 
 export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
+  /**
+   * États React pour la gestion du composant
+   * --------------------------------------
+   * router : Navigation programmatique
+   * isEditing : Mode édition vs création
+   * layoutName : Nom du layout
+   * isSaving : État de sauvegarde en cours
+   * uploadError : Message d'erreur d'upload
+   * feedback : Messages de retour utilisateur
+   */
   const router = useRouter();
   const isEditing = Boolean(existingLayout);
 
@@ -44,9 +77,27 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
     message: string;
   } | null>(null);
 
+  /**
+   * Références React
+   * ---------------
+   * flyerBlobRef : Stocke le Blob de l'image active
+   * revokeFlyerUrlRef : URL temporaire pour l'affichage de l'image
+   */
   const flyerBlobRef = useRef<Blob | null>(existingLayout?.flyerBlob ?? null);
   const revokeFlyerUrlRef = useRef<string | null>(null);
 
+  /**
+   * État de l'éditeur Konva
+   * ----------------------
+   * Géré par le hook useFlyerEditorState qui fournit :
+   * - flyer : métadonnées de l'image
+   * - zones : tableau des zones dessinées
+   * - currentPoints : points en cours de dessin
+   * - isDrawing : mode dessin actif
+   * - isTracing : dessin en cours
+   * - showGuides : affichage de la grille
+   * - Méthodes de contrôle : toggle, cancel, setters...
+   */
   const editorState = useFlyerEditorState(null, [], [], {
     allowPlacements: false,
   });
@@ -66,17 +117,29 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
     setSelectedZoneId,
   } = editorState;
 
+  /**
+   * Effet de chargement initial
+   * --------------------------
+   * En mode édition :
+   * 1. Crée une URL pour l'image existante
+   * 2. Configure l'éditeur avec l'image et ses zones
+   * 3. Nettoie l'URL à la destruction
+   */
   useEffect(() => {
     if (!existingLayout) return;
+
     const url = URL.createObjectURL(existingLayout.flyerBlob);
     revokeFlyerUrlRef.current = url;
+
     setFlyerImage({
       url,
       width: existingLayout.width,
       height: existingLayout.height,
       fileName: existingLayout.fileName,
     });
+
     setZones(existingLayout.zones);
+
     return () => {
       if (revokeFlyerUrlRef.current) {
         URL.revokeObjectURL(revokeFlyerUrlRef.current);
@@ -94,6 +157,16 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
     };
   }, []);
 
+  /**
+   * Gestionnaire de drop d'image
+   * ---------------------------
+   * 1. Réinitialise les erreurs
+   * 2. Vérifie et traite le fichier
+   * 3. Crée une URL temporaire
+   * 4. Extrait les dimensions
+   * 5. Met à jour l'état de l'éditeur
+   * 6. Gère les erreurs potentielles
+   */
   const handleFlyerDrop = useCallback(
     async (accepted: File[]) => {
       setUploadError(null);
@@ -102,24 +175,30 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
       if (!file) return;
 
       try {
+        // Crée une URL temporaire pour l'image et en extrait les dimensions
         const url = URL.createObjectURL(file);
         const { width, height } = await loadImageDimensions(url);
 
+        // Révoque l'ancienne URL et ajoute un nouveau si une image était déjà chargée
         if (revokeFlyerUrlRef.current) {
           URL.revokeObjectURL(revokeFlyerUrlRef.current);
         }
         revokeFlyerUrlRef.current = url;
 
+        // Stocke le Blob de l'image active
         flyerBlobRef.current = file;
+
+        // Si le nom n'est pas encore défini, utilise le nom du fichier sans extension
         if (!layoutName) {
           setLayoutName(file.name.replace(/\.[^/.]+$/, ""));
         }
 
+        // Configure l'éditeur avec la nouvelle image et réinitialise les zones
         setFlyerImage({ url, width, height, fileName: file.name });
         setZones([]);
         setSelectedZoneId(null);
       } catch (error) {
-        console.error("Import flyer failed", error);
+        console.error("Import flyer failed: ", error);
         setUploadError("Impossible de charger ce fichier.");
         setFeedback({
           type: "error",
@@ -130,32 +209,63 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
     [layoutName, setFlyerImage, setSelectedZoneId, setZones]
   );
 
+  /**
+   * Configuration react-dropzone
+   * --------------------------
+   * accept : Filtre les types de fichiers acceptés (images)
+   * multiple : Désactive le multi-fichiers
+   * onDrop : Lie le gestionnaire de drop
+   */
   const flyerDropzone = useDropzone({
     accept: { "image/*": [] },
     multiple: false,
     onDrop: handleFlyerDrop,
   });
 
+  /**
+   * Message d'aide contextuel
+   * ------------------------
+   * Génère un message adapté selon :
+   * - Présence d'une image
+   * - Mode dessin actif
+   * - Nombre de points tracés
+   * - Nombre de zones définies
+   */
   const helperMessage = useMemo(() => {
     if (!flyer) return "Ajoutez un flyer pour commencer.";
+
     if (isDrawing) {
       if (isTracing) {
         return "Relâchez le clic pour fermer la zone librement dessinée.";
       }
+
       if (currentPoints.length === 0) {
         return "Cliquez puis faites glisser pour dessiner le contour de la zone.";
       }
+
       if (currentPoints.length < MIN_POINTS) {
         return "Tracez une zone fermée avec au moins trois points distincts.";
       }
-      return "Dessinez une forme fermée d&apos;un seul geste pour enregistrer la zone.";
+
+      return "Dessinez une forme fermée d'un seul geste pour enregistrer la zone.";
     }
+
     if (zones.length === 0) {
       return "Aucune zone définie. Activez le mode dessin pour délimiter un emplacement.";
     }
-    return "Tracez ou ajustez vos zones avant de passer à l&apos;insertion des photos.";
+
+    return "Tracez ou ajustez vos zones avant de passer à l'insertion des photos.";
   }, [currentPoints.length, flyer, isDrawing, isTracing, zones.length]);
 
+  /**
+   * Gestionnaire de sauvegarde
+   * -------------------------
+   * 1. Valide les données requises
+   * 2. Construit l'objet layout
+   * 3. Persiste les données
+   * 4. Gère le retour utilisateur
+   * 5. Redirige si nécessaire
+   */
   const handleSaveLayout = useCallback(async () => {
     if (!flyer || !flyerBlobRef.current) return;
     const trimmedName = layoutName.trim();
@@ -181,6 +291,8 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
         zones,
         placements: existingLayout?.placements ?? [],
       };
+
+      console.log("Saving layout", layout);
 
       await saveFlyerLayout(layout);
       if (isEditing) {
@@ -209,6 +321,15 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8">
+      {/* Structure du rendu
+         ------------------
+         1. Header : titre + état + navigation
+         2. Contenu principal :
+            - Zone d'import (react-dropzone)
+            - Canevas de dessin (Konva)
+         3. Sidebar :
+            - Informations et contrôles
+            - Liste des zones définies */}
       <header className="flex flex-col gap-2 border-b border-border/40 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm uppercase tracking-wide text-muted-foreground">
@@ -373,7 +494,7 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
                 ? "Enregistrement en cours…"
                 : isEditing
                   ? "Sauvegarder les zones"
-                  : "Enregistrer et passer à l&apos;insertion"}
+                  : "Enregistrer et passer à l'insertion"}
             </Button>
           </section>
 

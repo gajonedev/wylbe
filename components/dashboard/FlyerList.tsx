@@ -14,6 +14,7 @@ export function FlyerList() {
 
   useEffect(() => {
     let cancelled = false;
+    // Fetch the list of flyer layouts
     const load = async () => {
       try {
         const items = await listFlyerLayouts();
@@ -26,7 +27,9 @@ export function FlyerList() {
         }
       }
     };
+
     load();
+
     return () => {
       cancelled = true;
     };
