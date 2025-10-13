@@ -167,7 +167,7 @@ export function FlyerStage({
     <div
       ref={containerRef}
       className={cn(
-        "flex w-full items-center justify-center overflow-hidden rounded-xl border border-border/40 bg-muted/30",
+        "flex w-full items-center justify-center overflow-hidden border border-border/40 bg-muted/30",
         className
       )}
     >

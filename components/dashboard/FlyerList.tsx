@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { PlusCircle, Trash2 } from "lucide-react";
+import { Link2, PlusCircle, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { FlyerLayoutSummary } from "@/lib/types";
 import { deleteFlyerLayout, listFlyerLayouts } from "@/lib/storage/flyers";
+import Loader from "../Loader";
 
 export function FlyerList() {
   const [layouts, setLayouts] = useState<FlyerLayoutSummary[]>([]);
@@ -41,32 +42,28 @@ export function FlyerList() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12">
-      <header className="flex flex-col gap-3 border-b border-border/40 pb-6 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex w-full flex-col gap-6">
+      <div className="flex flex-col gap-3 border-b border-border/40 pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm uppercase tracking-wide text-muted-foreground">
-            Vos flyers
-          </p>
           <h1 className="text-3xl font-semibold">Bibliothèque</h1>
-          <p className="text-sm text-muted-foreground">
-            Créez une nouvelle disposition ou reprenez-en une pour placer les
-            photos.
+          <p className="text-sm text-muted-foreground sm:max-w-64">
+            Créez un nouveau layout ou reprenez-en un pour placer les photos.
           </p>
         </div>
         <Button asChild>
           <Link href="/layouts/new">
-            <PlusCircle className="mr-2 size-4" />
+            <PlusCircle className="size-4" />
             Nouveau flyer
           </Link>
         </Button>
-      </header>
+      </div>
 
       {isLoading ? (
-        <div className="rounded-2xl border border-border/50 bg-card/50 p-6 text-sm text-muted-foreground">
-          Chargement des flyers enregistrés…
+        <div className="flex w-full items-center justify-center pt-8">
+          <Loader />
         </div>
       ) : layouts.length === 0 ? (
-        <div className="rounded-2xl border border-border/50 bg-card/50 p-6 text-sm text-muted-foreground">
+        <div className="border border-border/50 bg-card/50 p-6 text-sm text-muted-foreground">
           Aucun flyer sauvegardé pour le moment. Créez-en un nouveau pour
           commencer.
         </div>
@@ -75,12 +72,12 @@ export function FlyerList() {
           {layouts.map((layout) => (
             <div
               key={layout.id}
-              className="flex flex-col justify-between gap-4 rounded-2xl border border-border/60 bg-card/60 p-5 shadow-sm backdrop-blur sm:flex-row sm:items-center"
+              className="flex flex-col justify-between gap-4 border border-border/60 bg-card/60 p-5 shadow-sm backdrop-blur sm:flex-row sm:items-center"
             >
               <div className="space-y-2">
                 <h2 className="text-xl font-semibold">{layout.name}</h2>
                 <p className="text-sm text-muted-foreground">
-                  {layout.fileName} • {layout.width} × {layout.height}px
+                  {layout.fileName} • {layout.width} × {layout.height} px
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Dernière modification :{" "}
@@ -89,18 +86,20 @@ export function FlyerList() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button asChild variant="outline" size="sm">
-                  <Link href={`/layouts/${layout.id}/zones`}>Zones</Link>
+                  <Link href={`/layouts/${layout.id}/zones`}>Modifier</Link>
                 </Button>
                 <Button asChild variant="secondary" size="sm">
                   <Link href={`/layouts/${layout.id}/placements`}>
-                    Placements
+                    <Link2 className="size-4 transform -rotate-45" />
+                    Lien
                   </Link>
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="outlineDestructive"
                   size="icon"
                   onClick={() => handleDelete(layout.id)}
                   title="Supprimer"
+                  className="size-7.5"
                 >
                   <Trash2 className="size-4" />
                 </Button>

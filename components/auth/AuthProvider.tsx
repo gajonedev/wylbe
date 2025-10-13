@@ -96,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
     } catch (err) {
       console.error("Google OAuth initialisation failed", err);
+
       if (isMountedRef.current) {
         setError("Impossible de démarrer l'authentification Google.");
       }

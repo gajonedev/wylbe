@@ -21,6 +21,7 @@ import {
   loadFlyerLayout,
   saveFlyerLayout,
 } from "@/lib/storage/flyers";
+import Loader from "../Loader";
 
 interface FlyerPlacementEditorProps {
   layoutId: string;
@@ -33,7 +34,6 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
   const [layoutMeta, setLayoutMeta] = useState<FlyerLayout["meta"] | null>(
     null
   );
-  const [isSaving, setIsSaving] = useState(false);
 
   const flyerBlobRef = useRef<Blob | null>(null);
   const flyerUrlRef = useRef<string | null>(null);
@@ -63,8 +63,6 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
     stageScaleRef,
     handleSelectZone,
   } = editorState;
-
-  // console.log("Flyer: ", flyer);
 
   useEffect(() => {
     let cancelled = false;
@@ -201,6 +199,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
     noClick: false,
     disabled: !selectedZoneId,
     onDrop: handleZoneImageChange,
+    maxSize: 5 * 1024 * 1024, // 5 MB
   });
 
   const handleRemovePlacement = useCallback(() => {
@@ -296,12 +295,6 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
     stageScaleRef,
   ]);
 
-  const handleDeleteLayout = useCallback(async () => {
-    if (!layoutMeta) return;
-    await deleteFlyerLayout(layoutMeta.id);
-    router.push("/");
-  }, [layoutMeta, router]);
-
   const helperMessage = useMemo(() => {
     if (!flyer) return "Importez un flyer pour commencer.";
     if (selectedZoneId) {
@@ -316,7 +309,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
   if (isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center py-20">
-        <p className="text-sm text-muted-foreground">Chargement du flyer…</p>
+        <Loader />
       </div>
     );
   }
@@ -334,14 +327,17 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8">
-      <header className="flex flex-col gap-2 border-b border-border/40 pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 border-b border-border/40 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm uppercase tracking-wide text-muted-foreground">
+          <p className="text-xl font-semibold uppercase tracking-wide">
             Modifier le visuel
           </p>
-          <h1 className="text-2xl font-semibold line-clamp-1 max-w-xs">
+          <Link
+            href={`/layouts/${layoutMeta?.id}/zones`}
+            className="text-sm line-clamp-1 max-w-xs text-muted-foreground"
+          >
             {layoutMeta?.name}
-          </h1>
+          </Link>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* {layoutMeta && (
@@ -357,18 +353,18 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
             onClick={handleExport}
             disabled={!flyer || isExporting}
           >
-            <Download className="mr-2 size-4" />
-            {isExporting ? "Export en cours…" : "Télécharger le flyer"}
+            <Download />
+            {isExporting ? "Export en cours…" : "Télécharger"}
           </Button>
           {/* <Button variant="destructive" size="sm" onClick={handleDeleteLayout}>
             Supprimer le flyer
           </Button> */}
         </div>
-      </header>
+      </div>
 
       <div className="flex flex-col gap-10 lg:flex-row">
         <div className="flex-1 space-y-4">
-          <section className="rounded-2xl border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
+          <section className="border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
             <div className="flex flex-wrap items-center gap-3">
               <div className="grow">
                 <h2 className="text-lg font-semibold">Canevas</h2>
@@ -443,13 +439,13 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
             </div>
           </section> */}
 
-          <section className="rounded-2xl border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
+          <section className="border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <h2 className="text-lg font-semibold">Insertion photo</h2>
                 <p className="text-sm text-muted-foreground">
                   {selectedZoneId
-                    ? "Déposez une image pour l'associer à la zone."
+                    ? "Cliquez ou déposez une image pour l'associer à la zone."
                     : "Sélectionnez une zone pour importer une image."}
                 </p>
               </div>
@@ -465,7 +461,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
             <div
               {...zoneDropzone.getRootProps({
                 className: cn(
-                  "mt-4 flex min-h-[160px] w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 text-center transition-colors",
+                  "mt-4 flex min-h-[160px] w-full flex-col items-center justify-center gap-2 border border-dashed border-border/60 text-center transition-colors",
                   zoneDropzone.isDragActive
                     ? "border-primary bg-primary/10"
                     : selectedZoneId
@@ -480,11 +476,11 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
                   <p className="text-md font-medium">
                     {zoneDropzone.isDragActive
                       ? "Relâchez pour associer"
-                      : "Déposez une image ici"}
+                      : "Cliquez ou déposez une image ici"}
                   </p>
                   <p className="text-sm text-muted-foreground px-6">
-                    Formats : PNG, JPG. Ajustez ensuite directement dans le
-                    canevas.
+                    Formats : PNG, JPG, etc (taille max 5 Mo). Ajustez ensuite
+                    directement dans le canevas.
                   </p>
                 </div>
               ) : (
@@ -508,7 +504,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
                     Réinitialiser
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant="outlineDestructive"
                     size="sm"
                     onClick={handleRemovePlacement}
                   >

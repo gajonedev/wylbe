@@ -15,7 +15,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save } from "lucide-react";
+import { Link2, Save } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 
 import FlyerStage from "@/components/editor/canvas/FlyerStage";
@@ -255,7 +255,7 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
       return "Aucune zone définie. Activez le mode dessin pour délimiter un emplacement.";
     }
 
-    return "Tracez ou ajustez vos zones avant de passer à l'insertion des photos.";
+    return "Tracez ou ajustez vos zones d'insertion de photos.";
   }, [currentPoints.length, flyer, isDrawing, isTracing, zones.length]);
 
   /**
@@ -313,6 +313,7 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
     } catch (error) {
       toast.error("L'enregistrement a échoué: " + error);
       console.error("Erreur lors de l'enregistrement du flyer", error);
+
       setFeedback({
         type: "error",
         message: "L'enregistrement a échoué.",
@@ -328,7 +329,7 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
     zones.length > 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
       {/* Structure du rendu
          ------------------
          1. Header : titre + état + navigation
@@ -338,12 +339,12 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
          3. Sidebar :
             - Informations et contrôles
             - Liste des zones définies */}
-      <header className="flex flex-col gap-2 border-b border-border/40 pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex gap-2 border-b border-border/40 pb-4 flex-row items-center justify-between">
         <div>
-          <p className="text-sm uppercase tracking-wide text-muted-foreground">
+          <p className="text-xl font-semibold uppercase tracking-wide ">
             {isEditing ? "Zones" : "Nouveau flyer"}
           </p>
-          <h1 className="text-2xl font-semibold">
+          <h1 className="max-w-64 line-clamp-1 text-muted-foreground">
             {isEditing ? existingLayout?.name : "Définir les zones"}
           </h1>
           {feedback && (
@@ -361,9 +362,9 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {isEditing && existingLayout && (
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" size="icon">
               <Link href={`/layouts/${existingLayout.id}/placements`}>
-                Retour aux placements
+                <Link2 className="size-4 transform -rotate-45" />
               </Link>
             </Button>
           )}
@@ -371,7 +372,7 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
       </header>
       <div className="flex flex-col gap-10 lg:flex-row">
         <div className="flex-1 space-y-4">
-          <section className="rounded-2xl border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
+          <section className="border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
             <div className="flex flex-wrap items-center gap-3">
               <div className="grow">
                 <h2 className="text-lg font-semibold">Flyer</h2>
@@ -386,7 +387,7 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
             <div
               {...flyerDropzone.getRootProps({
                 className: cn(
-                  "mt-4 flex min-h-[220px] w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/60 text-center transition-colors",
+                  "mt-4 flex min-h-[220px] w-full flex-col items-center justify-center gap-3 border border-dashed border-border/60 text-center transition-colors",
                   flyerDropzone.isDragActive
                     ? "border-primary bg-primary/10"
                     : "bg-muted/30"
@@ -422,7 +423,7 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
+          <section className="border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
             <div className="flex flex-wrap items-center gap-3">
               <div className="grow">
                 <h2 className="text-lg font-semibold">Canevas</h2>
@@ -442,14 +443,14 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
                     Annuler
                   </Button>
                 )}
-                <Button
+                {/* <Button
                   variant="outline"
                   size="sm"
                   disabled={!flyer}
                   onClick={() => setShowGuides((prev) => !prev)}
                 >
                   {showGuides ? "Masquer les repères" : "Afficher les repères"}
-                </Button>
+                </Button> */}
               </div>
             </div>
 
@@ -461,12 +462,12 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
           </section>
         </div>
 
-        <aside className="w-full max-w-md space-y-6">
-          <section className="rounded-2xl border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
+        <aside className="w-full space-y-6">
+          <section className="border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
             <h2 className="text-lg font-semibold">Informations</h2>
             <div className="mt-3 space-y-3">
               <div>
-                <label className="text-xs font-medium uppercase text-muted-foreground">
+                <label className="text-sm font-medium text-muted-foreground">
                   Nom du flyer
                 </label>
                 <Input
@@ -504,42 +505,6 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
                   ? "Sauvegarder les zones"
                   : "Enregistrer et passer à l'insertion"}
             </Button>
-          </section>
-
-          <section className="rounded-2xl border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
-            <header className="flex items-center justify-between gap-2">
-              <div>
-                <h2 className="text-lg font-semibold">Zones définies</h2>
-                <p className="text-sm text-muted-foreground">
-                  {zones.length}
-                  {zones.length > 1 ? " zones" : " zone"} enregistrée
-                  {zones.length > 1 ? "s" : ""}.
-                </p>
-              </div>
-            </header>
-            <div className="mt-4 space-y-3">
-              {zones.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Pas encore de zone. Activez le mode dessin puis cliquez sur le
-                  canevas pour en créer une.
-                </p>
-              ) : (
-                zones.map((zone) => (
-                  <div
-                    key={zone.id}
-                    className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{zone.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {zone.points.length} point
-                        {zone.points.length > 1 ? "s" : ""}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
           </section>
         </aside>
       </div>

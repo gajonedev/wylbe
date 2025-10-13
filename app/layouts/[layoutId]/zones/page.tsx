@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import FlyerZoneBuilder from "@/components/editor/FlyerZoneBuilder";
@@ -8,11 +8,12 @@ import type { FlyerLayout } from "@/lib/types";
 import { loadFlyerLayout } from "@/lib/storage/flyers";
 import { Button } from "@/components/ui/button";
 import { ThemeToggler } from "@/components/ThemeToggler";
+import Loader from "@/components/Loader";
 
 type ZonePageProps = {
-  params: {
+  params: Promise<{
     layoutId: string;
-  };
+  }>;
 };
 
 type ExistingLayoutState = {
@@ -28,6 +29,7 @@ type ExistingLayoutState = {
 };
 
 export default function ZonePage({ params }: ZonePageProps) {
+  const { layoutId } = use(params);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export default function ZonePage({ params }: ZonePageProps) {
     let cancelled = false;
     const load = async () => {
       try {
-        const stored = await loadFlyerLayout(params.layoutId);
+        const stored = await loadFlyerLayout(layoutId);
         if (!stored) {
           throw new Error("Flyer introuvable");
         }
@@ -63,7 +65,7 @@ export default function ZonePage({ params }: ZonePageProps) {
     return () => {
       cancelled = true;
     };
-  }, [params.layoutId]);
+  }, [layoutId]);
 
   const existingLayout = useMemo<ExistingLayoutState | null>(() => {
     if (!layout) return null;
@@ -85,7 +87,7 @@ export default function ZonePage({ params }: ZonePageProps) {
   if (isLoading) {
     content = (
       <div className="flex h-full w-full items-center justify-center py-20">
-        <p className="text-sm text-muted-foreground">Chargement du flyer…</p>
+        <Loader />
       </div>
     );
   } else if (error) {
@@ -115,9 +117,6 @@ export default function ZonePage({ params }: ZonePageProps) {
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
       {content}
-      <div className="fixed bottom-5 right-6">
-        <ThemeToggler />
-      </div>
     </div>
   );
 }
