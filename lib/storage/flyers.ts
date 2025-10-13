@@ -1,147 +1,344 @@
-import { del, get, keys, set } from "idb-keyval";
+import { AppwriteException, Models, Query } from "appwrite";
 
-import type { FlyerLayout, FlyerLayoutSummary } from "@/lib/types";
+import {
+  appwriteDatabases,
+  appwriteStorage,
+  ensureAppwriteSession,
+} from "@/lib/appwrite";
+import type {
+  FlyerLayout,
+  FlyerLayoutSummary,
+  Placement,
+  Zone,
+} from "@/lib/types";
 
-type SerializedFlyerLayout = Omit<FlyerLayout, "flyerBlob"> & {
-  flyerBlob: string;
+const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
+const flyersCollectionId =
+  process.env.NEXT_PUBLIC_APPWRITE_FLYERS_COLLECTION_ID!;
+const flyerBucketId = process.env.NEXT_PUBLIC_APPWRITE_STORAGE_BUCKET_ID!;
+
+type FlyerDocument = Models.Document & {
+  name: string;
+  fileName: string;
+  width: number;
+  height: number;
+  flyerFileId: string;
+  zones?: Zone[] | string | null;
+  placements?: Placement[];
 };
 
-const STORE_PREFIX = "flyer-layout";
-const METADATA_KEY = "flyer-metadata-index";
-
-function getLayoutKey(id: string) {
-  return `${STORE_PREFIX}:${id}`;
-}
-
-function hasIndexedDB() {
-  try {
-    return typeof indexedDB !== "undefined";
-  } catch (error) {
-    console.warn("IndexedDB unavailable", error);
-    return false;
+function assertRemoteStorageConfig() {
+  if (!databaseId || !flyersCollectionId || !flyerBucketId) {
+    throw new Error(
+      "Appwrite storage misconfigured: ensure NEXT_PUBLIC_APPWRITE_DATABASE_ID, NEXT_PUBLIC_APPWRITE_FLYERS_COLLECTION_ID and NEXT_PUBLIC_APPWRITE_STORAGE_BUCKET_ID are defined"
+    );
   }
 }
 
-async function readMetadataIndex(): Promise<
-  Record<string, FlyerLayoutSummary>
-> {
-  if (!hasIndexedDB()) {
-    const raw = window.localStorage.getItem(METADATA_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, FlyerLayoutSummary>) : {};
-  }
-  const metadata = await get<Record<string, FlyerLayoutSummary>>(METADATA_KEY);
-  return metadata ?? {};
+async function ensureRemoteReady() {
+  assertRemoteStorageConfig();
+  await ensureAppwriteSession();
 }
 
-async function writeMetadataIndex(index: Record<string, FlyerLayoutSummary>) {
-  if (!hasIndexedDB()) {
-    window.localStorage.setItem(METADATA_KEY, JSON.stringify(index));
-    return;
-  }
-  await set(METADATA_KEY, index);
+function toFlyerSummary(document: FlyerDocument): FlyerLayoutSummary {
+  return {
+    id: document.$id,
+    name: document.name,
+    fileName: document.fileName,
+    width: document.width,
+    height: document.height,
+    createdAt: document.$createdAt,
+    updatedAt: document.$updatedAt,
+    hasPlacements: Boolean(document.placements?.length),
+  };
 }
 
-async function persistLayout(layout: FlyerLayout) {
-  const key = getLayoutKey(layout.meta.id);
-  if (!hasIndexedDB()) {
-    const arrayBuffer = await layout.flyerBlob.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-    const payload: SerializedFlyerLayout = {
-      ...layout,
-      flyerBlob: base64,
-    };
-    window.localStorage.setItem(key, JSON.stringify(payload));
-    return;
-  }
-  await set(key, layout);
+type ZoneLike = {
+  id?: unknown;
+  name?: unknown;
+  points?: unknown;
+};
+
+type PointLike = {
+  x?: unknown;
+  y?: unknown;
+};
+
+function cloneZones(zones: ZoneLike[]): Zone[] {
+  return zones
+    .filter(
+      (
+        zone
+      ): zone is ZoneLike & {
+        id: string;
+        name: string;
+        points: unknown;
+      } => typeof zone?.id === "string" && typeof zone?.name === "string"
+    )
+    .map((zone) => ({
+      id: zone.id,
+      name: zone.name,
+      points: Array.isArray(zone.points)
+        ? zone.points
+            .map((point) => {
+              if (
+                point &&
+                typeof (point as PointLike).x !== "undefined" &&
+                typeof (point as PointLike).y !== "undefined"
+              ) {
+                const x = Number((point as PointLike).x);
+                const y = Number((point as PointLike).y);
+                if (Number.isFinite(x) && Number.isFinite(y)) {
+                  return { x, y };
+                }
+              }
+              return null;
+            })
+            .filter(
+              (point): point is { x: number; y: number } => point !== null
+            )
+        : [],
+    }));
 }
 
-async function readLayout(id: string): Promise<FlyerLayout | null> {
-  const key = getLayoutKey(id);
-  if (!hasIndexedDB()) {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return null;
-    const serialized = JSON.parse(raw) as SerializedFlyerLayout;
-    const byteString = atob(serialized.flyerBlob);
-    const buffer = new ArrayBuffer(byteString.length);
-    const view = new Uint8Array(buffer);
-    for (let i = 0; i < byteString.length; i++) {
-      view[i] = byteString.charCodeAt(i);
+function serializeZones(zones: Zone[]): string {
+  return JSON.stringify(cloneZones(zones));
+}
+
+function parseDocumentZones(value: FlyerDocument["zones"]): Zone[] {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return cloneZones(value as ZoneLike[]);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return cloneZones(parsed as ZoneLike[]);
+      }
+    } catch (error) {
+      console.warn("Failed to parse zones JSON from Appwrite document", error);
     }
-    return {
-      ...serialized,
-      flyerBlob: new Blob([buffer], { type: "image/png" }),
-    };
   }
-  const data = await get<FlyerLayout>(key);
-  return data ?? null;
+
+  return [];
 }
 
-async function removeLayout(id: string) {
-  const key = getLayoutKey(id);
-  if (!hasIndexedDB()) {
-    window.localStorage.removeItem(key);
-    return;
+function asFlyerDocument(document: Models.Document): FlyerDocument {
+  return document as unknown as FlyerDocument;
+}
+
+async function upsertFlyerFile(flyerId: string, blob: Blob, fileName: string) {
+  assertRemoteStorageConfig();
+
+  const file = new File([blob], fileName, {
+    type: blob.type || "image/png",
+  });
+
+  try {
+    await appwriteStorage.createFile(flyerBucketId!, flyerId, file);
+    return flyerId;
+  } catch (error) {
+    if (
+      error instanceof AppwriteException &&
+      typeof error.code === "number" &&
+      error.code === 409
+    ) {
+      await appwriteStorage.deleteFile(flyerBucketId!, flyerId).catch(() => {
+        /* ignore */
+      });
+      await appwriteStorage.createFile(flyerBucketId!, flyerId, file);
+      return flyerId;
+    }
+    throw error;
   }
-  await del(key);
+}
+
+async function fetchFlyerBlob(fileId: string): Promise<Blob> {
+  assertRemoteStorageConfig();
+
+  const url = await appwriteStorage.getFileView(flyerBucketId!, fileId);
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    throw new Error(
+      `Unable to download flyer image (status ${response.status})`
+    );
+  }
+  return await response.blob();
 }
 
 export async function saveFlyerLayout(layout: FlyerLayout) {
-  const metadataIndex = await readMetadataIndex();
-  metadataIndex[layout.meta.id] = {
-    id: layout.meta.id,
+  await ensureRemoteReady();
+
+  const flyerId = layout.meta.id;
+  const fileId = await upsertFlyerFile(
+    flyerId,
+    layout.flyerBlob,
+    layout.meta.fileName
+  );
+
+  const documentPayload = {
     name: layout.meta.name,
     fileName: layout.meta.fileName,
     width: layout.meta.width,
     height: layout.meta.height,
-    createdAt: layout.meta.createdAt,
-    updatedAt: layout.meta.updatedAt,
-    hasPlacements: Boolean(layout.placements?.length),
-  };
+    flyerFileId: fileId,
+    zones: serializeZones(layout.zones),
+  } satisfies Record<string, unknown>;
 
-  await persistLayout(layout);
-  await writeMetadataIndex(metadataIndex);
+  try {
+    await appwriteDatabases.updateDocument(
+      databaseId!,
+      flyersCollectionId!,
+      flyerId,
+      documentPayload
+    );
+  } catch (error) {
+    if (
+      error instanceof AppwriteException &&
+      typeof error.code === "number" &&
+      error.code === 404
+    ) {
+      await appwriteDatabases.createDocument(
+        databaseId!,
+        flyersCollectionId!,
+        flyerId,
+        documentPayload
+      );
+      return;
+    }
+    throw error;
+  }
 }
 
-export async function loadFlyerLayout(id: string) {
-  return readLayout(id);
+export async function loadFlyerLayout(id: string): Promise<FlyerLayout | null> {
+  await ensureRemoteReady();
+
+  try {
+    console.log("Loading flyer layout", { id });
+    const document = asFlyerDocument(
+      await appwriteDatabases.getDocument(databaseId!, flyersCollectionId!, id)
+    );
+    console.log("Loaded flyer document", document);
+
+    console.log("Loading flyer blob", document.flyerFileId);
+    const flyerBlob = await fetchFlyerBlob(document.flyerFileId);
+    console.log("Loaded flyer blob", flyerBlob);
+
+    return {
+      meta: {
+        id: document.$id,
+        name: document.name,
+        fileName: document.fileName,
+        width: document.width,
+        height: document.height,
+        createdAt: document.$createdAt,
+        updatedAt: document.$updatedAt,
+      },
+      flyerBlob,
+      zones: parseDocumentZones(document.zones),
+      placements: Array.isArray(document.placements) ? document.placements : [],
+    };
+  } catch (error) {
+    if (
+      error instanceof AppwriteException &&
+      typeof error.code === "number" &&
+      error.code === 404
+    ) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function listFlyerLayouts(): Promise<FlyerLayoutSummary[]> {
-  const metadataIndex = await readMetadataIndex();
-  return Object.values(metadataIndex).sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  await ensureRemoteReady();
+
+  const result = await appwriteDatabases.listDocuments(
+    databaseId!,
+    flyersCollectionId!,
+    [Query.orderDesc("$updatedAt")]
+  );
+
+  return result.documents.map((document) =>
+    toFlyerSummary(asFlyerDocument(document))
   );
 }
 
 export async function deleteFlyerLayout(id: string) {
-  const metadataIndex = await readMetadataIndex();
-  delete metadataIndex[id];
-  await removeLayout(id);
-  await writeMetadataIndex(metadataIndex);
+  await ensureRemoteReady();
+
+  try {
+    const document = asFlyerDocument(
+      await appwriteDatabases.getDocument(databaseId!, flyersCollectionId!, id)
+    );
+
+    await Promise.all([
+      appwriteDatabases.deleteDocument(databaseId!, flyersCollectionId!, id),
+      appwriteStorage
+        .deleteFile(flyerBucketId!, document.flyerFileId)
+        .catch(() => {
+          /* ignore missing file */
+        }),
+    ]);
+  } catch (error) {
+    if (
+      error instanceof AppwriteException &&
+      typeof error.code === "number" &&
+      error.code === 404
+    ) {
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function flyerExists(id: string) {
-  const metadataIndex = await readMetadataIndex();
-  return Boolean(metadataIndex[id]);
+  await ensureRemoteReady();
+
+  try {
+    await appwriteDatabases.getDocument(databaseId!, flyersCollectionId!, id);
+    return true;
+  } catch (error) {
+    if (
+      error instanceof AppwriteException &&
+      typeof error.code === "number" &&
+      error.code === 404
+    ) {
+      return false;
+    }
+    throw error;
+  }
 }
 
 export async function clearAllFlyers() {
-  const metadataIndex = await readMetadataIndex();
-  await writeMetadataIndex({});
-  if (!hasIndexedDB()) {
-    Object.keys(metadataIndex).forEach((id) =>
-      window.localStorage.removeItem(getLayoutKey(id))
-    );
-    return;
-  }
-  const allKeys = await keys();
+  await ensureRemoteReady();
+
+  const documents = await appwriteDatabases.listDocuments(
+    databaseId!,
+    flyersCollectionId!,
+    [Query.limit(100)]
+  );
+
   await Promise.all(
-    allKeys
-      .filter(
-        (key): key is string =>
-          typeof key === "string" && key.startsWith(STORE_PREFIX)
-      )
-      .map((key) => del(key))
+    documents.documents.map(async (document) => {
+      const flyerDoc = asFlyerDocument(document);
+      await Promise.all([
+        appwriteDatabases.deleteDocument(
+          databaseId!,
+          flyersCollectionId!,
+          flyerDoc.$id
+        ),
+        appwriteStorage
+          .deleteFile(flyerBucketId!, flyerDoc.flyerFileId)
+          .catch(() => {
+            /* ignore */
+          }),
+      ]);
+    })
   );
 }

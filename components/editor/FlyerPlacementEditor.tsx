@@ -71,11 +71,12 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
     const load = async () => {
       try {
         const layout = await loadFlyerLayout(layoutId);
-        // console.log("Loaded layout", layout);
+        console.log("Loaded layout", layout);
 
         if (!layout) {
           throw new Error("Flyer introuvable");
         }
+
         if (cancelled) return;
 
         flyerBlobRef.current = layout.flyerBlob;
@@ -83,12 +84,14 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
 
         const flyerUrl = URL.createObjectURL(layout.flyerBlob);
         flyerUrlRef.current = flyerUrl;
+
         setFlyer({
           url: flyerUrl,
           width: layout.meta.width,
           height: layout.meta.height,
           fileName: layout.meta.fileName,
         });
+
         setZones(layout.zones);
 
         placementDataRef.current.clear();
@@ -130,7 +133,9 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
         }
       }
     };
+
     load();
+
     return () => {
       cancelled = true;
     };
@@ -138,12 +143,15 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
 
   useEffect(() => {
     const placementUrls = placementUrlsRef.current;
+
     return () => {
       const flyerUrl = flyerUrlRef.current;
+
       if (flyerUrl) {
         URL.revokeObjectURL(flyerUrl);
         flyerUrlRef.current = null;
       }
+
       placementUrls.forEach((value) => URL.revokeObjectURL(value));
       placementUrls.clear();
     };
@@ -176,10 +184,12 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
       }));
 
       placementDataRef.current.set(selectedZoneId, dataUrl);
+
       const previousUrl = placementUrlsRef.current.get(selectedZoneId);
       if (previousUrl) {
         URL.revokeObjectURL(previousUrl);
       }
+
       placementUrlsRef.current.set(selectedZoneId, url);
     },
     [computeInitialPlacement, selectedZoneId, setPlacements, zones]
@@ -286,40 +296,6 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
     stageScaleRef,
   ]);
 
-  const handleSavePlacements = useCallback(async () => {
-    if (!layoutMeta || !flyerBlobRef.current) return;
-    setIsSaving(true);
-    try {
-      const now = new Date().toISOString();
-      const placementArray = Object.values(placements).map((placement) => {
-        const storedData = placementDataRef.current.get(placement.zoneId);
-        const storedUrl = storedData ?? placement.url;
-        return {
-          ...placement,
-          url: storedUrl,
-        };
-      });
-
-      await saveFlyerLayout({
-        meta: {
-          ...layoutMeta,
-          updatedAt: now,
-        },
-        flyerBlob: flyerBlobRef.current,
-        zones,
-        placements: placementArray,
-      });
-      setLayoutMeta((prev) => (prev ? { ...prev, updatedAt: now } : prev));
-    } catch (saveError) {
-      console.error(
-        "Erreur lors de l'enregistrement des placements",
-        saveError
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  }, [layoutMeta, placements, zones]);
-
   const handleDeleteLayout = useCallback(async () => {
     if (!layoutMeta) return;
     await deleteFlyerLayout(layoutMeta.id);
@@ -361,30 +337,32 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
       <header className="flex flex-col gap-2 border-b border-border/40 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm uppercase tracking-wide text-muted-foreground">
-            Placements
+            Modifier le visuel
           </p>
-          <h1 className="text-2xl font-semibold">{layoutMeta?.name}</h1>
+          <h1 className="text-2xl font-semibold line-clamp-1 max-w-xs">
+            {layoutMeta?.name}
+          </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {layoutMeta && (
+          {/* {layoutMeta && (
             <Button asChild variant="outline" size="sm">
               <Link href={`/layouts/${layoutMeta.id}/zones`}>
                 Modifier les zones
               </Link>
             </Button>
-          )}
+          )} */}
           <Button
-            variant="outline"
+            // variant="outline"
             size="sm"
             onClick={handleExport}
             disabled={!flyer || isExporting}
           >
             <Download className="mr-2 size-4" />
-            {isExporting ? "Export en cours…" : "Exporter en PNG"}
+            {isExporting ? "Export en cours…" : "Télécharger le flyer"}
           </Button>
-          <Button variant="destructive" size="sm" onClick={handleDeleteLayout}>
+          {/* <Button variant="destructive" size="sm" onClick={handleDeleteLayout}>
             Supprimer le flyer
-          </Button>
+          </Button> */}
         </div>
       </header>
 
@@ -396,7 +374,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
                 <h2 className="text-lg font-semibold">Canevas</h2>
                 <p className="text-sm text-muted-foreground">{helperMessage}</p>
               </div>
-              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              {/* <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -405,7 +383,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
                 >
                   {showGuides ? "Masquer les repères" : "Afficher les repères"}
                 </Button>
-              </div>
+              </div> */}
             </div>
 
             <FlyerStage
@@ -416,8 +394,8 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
           </section>
         </div>
 
-        <aside className="w-full max-w-md space-y-6">
-          <section className="rounded-2xl border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
+        <aside className="w-full space-y-6">
+          {/* <section className="rounded-2xl border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
             <header className="flex items-center justify-between gap-2">
               <div>
                 <h2 className="text-lg font-semibold">Zones disponibles</h2>
@@ -463,7 +441,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
                 })
               )}
             </div>
-          </section>
+          </section> */}
 
           <section className="rounded-2xl border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
             <div className="flex items-center justify-between gap-2">
@@ -499,18 +477,18 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
               <input {...zoneDropzone.getInputProps()} />
               {selectedZoneId ? (
                 <div className="space-y-1">
-                  <p className="text-sm font-medium">
+                  <p className="text-md font-medium">
                     {zoneDropzone.isDragActive
                       ? "Relâchez pour associer"
                       : "Déposez une image ici"}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-muted-foreground px-6">
                     Formats : PNG, JPG. Ajustez ensuite directement dans le
                     canevas.
                   </p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-md text-muted-foreground">
                   Choisissez une zone avant d&apos;ajouter une image.
                 </p>
               )}
@@ -539,17 +517,6 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
                 </div>
               </div>
             )}
-          </section>
-
-          <section className="rounded-2xl border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
-            <Button
-              className="w-full"
-              onClick={handleSavePlacements}
-              disabled={isSaving}
-            >
-              <Save className="mr-2 size-4" />
-              {isSaving ? "Enregistrement…" : "Enregistrer les placements"}
-            </Button>
           </section>
         </aside>
       </div>

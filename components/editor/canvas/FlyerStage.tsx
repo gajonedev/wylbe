@@ -161,7 +161,7 @@ export function FlyerStage({
     [currentPoints, stageHeight, stageWidth]
   );
 
-  console.log("Data: ", flyer, stageWidth, stageHeight);
+  // console.log("Data: ", flyer, stageWidth, stageHeight);
 
   return (
     <div

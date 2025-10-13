@@ -27,6 +27,7 @@ import { MIN_POINTS } from "@/lib/geometry";
 import type { FlyerLayout, Zone } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { saveFlyerLayout } from "@/lib/storage/flyers";
+import { toast } from "sonner";
 
 /**
  * Interface décrivant un layout existant
@@ -268,15 +269,19 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
    */
   const handleSaveLayout = useCallback(async () => {
     if (!flyer || !flyerBlobRef.current) return;
+
     const trimmedName = layoutName.trim();
     if (!trimmedName) return;
+
     if (zones.length === 0) return;
 
     setIsSaving(true);
     setFeedback(null);
+
     try {
       const id = existingLayout?.id ?? crypto.randomUUID();
       const now = new Date().toISOString();
+
       const layout: FlyerLayout = {
         meta: {
           id,
@@ -295,6 +300,8 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
       console.log("Saving layout", layout);
 
       await saveFlyerLayout(layout);
+      toast.success("Zones enregistrées avec succès.");
+
       if (isEditing) {
         setFeedback({
           type: "success",
@@ -304,6 +311,7 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
         router.push(`/layouts/${id}/placements`);
       }
     } catch (error) {
+      toast.error("L'enregistrement a échoué: " + error);
       console.error("Erreur lors de l'enregistrement du flyer", error);
       setFeedback({
         type: "error",

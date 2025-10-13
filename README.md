@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Wylbe
 
-## Getting Started
+Editeur de flyers avec dessin de zones interactives, placements d'images et export PNG, propulsé par Next.js 15 et Konva.
 
-First, run the development server:
+Depuis octobre 2025, les données sont stockées à distance dans Appwrite (plus de persistance locale dans IndexedDB).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Prérequis
+
+- Node.js 20+
+- pnpm 8+
+- Un projet Appwrite accessible depuis le client (anonyme ou authentifié)
+
+## Variables d'environnement
+
+Créez un fichier `.env.local` basé sur les clés suivantes :
+
+```
+NEXT_PUBLIC_APPWRITE_ENDPOINT="https://cloud.appwrite.io/v1"
+NEXT_PUBLIC_APPWRITE_PROJECT="<ID du projet>"
+NEXT_PUBLIC_APPWRITE_DATABASE_ID="<ID de la base>"
+NEXT_PUBLIC_APPWRITE_FLYERS_COLLECTION_ID="<ID de la collection flyers>"
+NEXT_PUBLIC_APPWRITE_STORAGE_BUCKET_ID="<ID du bucket des flyers>"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> Ces variables sont requises au runtime. L'application ne démarre pas si elles sont manquantes.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### OAuth 2.0 (Google)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Activez le provider **Google** dans la console Appwrite.
+2. Ajoutez l'URL autorisée suivante :
+   - `https://<votre-domaine>/` (succès)
+   - `https://<votre-domaine>/auth/error` (échec)
+   - En local : `http://localhost:3000/` et `http://localhost:3000/auth/error`
+3. Assurez-vous que les clés Google OAuth correspondent à l'URL de redirection.
 
-## Learn More
+## Schéma Appwrite
 
-To learn more about Next.js, take a look at the following resources:
+### Collection « flyers » (base : la vôtre)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Attribut      | Type     | Description                                                         |
+| ------------- | -------- | ------------------------------------------------------------------- |
+| `name`        | string   | Nom du flyer.                                                       |
+| `fileName`    | string   | Nom original du fichier importé.                                    |
+| `width`       | integer  | Largeur du flyer (px).                                              |
+| `height`      | integer  | Hauteur du flyer (px).                                              |
+| `createdAt`   | string   | Timestamp ISO de création (conservé tel quel côté client).          |
+| `updatedAt`   | string   | Dernière mise à jour (ISO).                                         |
+| `flyerFileId` | string   | Identifiant du fichier stocké dans le bucket Appwrite.              |
+| `zones`       | object[] | Tableau JSON des zones (voir interface `Zone` dans `lib/types.ts`). |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Permissions recommandées : lecture/écriture réservées aux utilisateurs authentifiés (ou session anonyme selon votre stratégie).
+- Aucun stockage des placements d'images : ils restent locaux au navigateur.
 
-## Deploy on Vercel
+### Bucket de fichiers
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Créez un bucket dédié (`flyerBucketId`).
+- Autorisez la lecture au même périmètre que la collection (publique ou privée).
+- Les fichiers sont créés/écrasés avec l'identifiant du flyer.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Démarrage
+
+```bash
+pnpm install
+pnpm dev
+```
+
+L'application est accessible sur [http://localhost:3000](http://localhost:3000).
+
+## Flux principal
+
+1. Import d'un flyer, dessin de zones ➜ sauvegarde distante via Appwrite.
+2. Ouverture d'un flyer ➜ récupération du blob depuis le bucket + zones depuis la collection.
+3. Ajout d'images dans les zones ➜ usage éphémère pour l'export, rien n'est stocké côté serveur.
+
+## Tests & qualité
+
+```bash
+pnpm lint
+```
+
+Ajoutez vos propres tests selon les besoins du projet.
