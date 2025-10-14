@@ -4,11 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { Toaster } from "sonner";
-import { Button } from "@/components/ui/button";
-import Link from "next/dist/client/link";
-import { ThemeToggler } from "@/components/ThemeToggler";
-import { appwriteAccount } from "@/lib/appwrite";
-import Menu from "@/components/Menu";
+import { Analytics } from "@vercel/analytics/next";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -51,8 +47,21 @@ export default async function RootLayout({
               </p>
             </footer>
           </AuthProvider>
-          <Toaster richColors position="top-right" theme="dark" />
+          <Toaster
+            richColors
+            position="top-right"
+            theme="dark"
+            toastOptions={{
+              style: {
+                borderRadius: 0,
+                fontFamily: "var(--font-outfit)",
+                // fontWeight: 500,
+                // fontSize: "0.9rem",
+              },
+            }}
+          />
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );

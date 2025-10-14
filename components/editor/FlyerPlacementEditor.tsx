@@ -401,54 +401,6 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
 
         <aside className="w-full lg:max-w-sm space-y-6">
           <section className="border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
-            <header className="flex items-center justify-between gap-2">
-              <div>
-                <h2 className="text-lg font-semibold">Zones disponibles</h2>
-                <p className="text-sm text-muted-foreground">
-                  {zones.length}
-                  {zones.length > 1 ? " zones" : " zone"}
-                </p>
-              </div>
-            </header>
-            <div className="mt-4 space-y-3">
-              {zones.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Aucun contour. Retournez à l&apos;étape de création pour en
-                  ajouter.
-                </p>
-              ) : (
-                zones.map((zone) => {
-                  const isSelected = selectedZoneId === zone.id;
-                  return (
-                    <button
-                      key={zone.id}
-                      onClick={() => handleSelectZone(zone.id)}
-                      className={cn(
-                        "w-full rounded-lg border px-3 py-2 text-left transition",
-                        isSelected
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border/60 bg-muted/30 hover:bg-muted/50"
-                      )}
-                    >
-                      <div className="flex items-center justify-between text-sm font-medium">
-                        <span>{zone.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {zone.points.length} point
-                          {zone.points.length > 1 ? "s" : ""}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {placements[zone.id]?.fileName ||
-                          "Aucune image assignée"}
-                      </p>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </section>
-
-          <section className="border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <h2 className="text-lg font-semibold">Insertion photo</h2>
@@ -522,6 +474,54 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
                 </div>
               </div>
             )}
+          </section>
+
+          <section className="border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
+            <header className="flex items-center justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-semibold">Zones disponibles</h2>
+                <p className="text-sm text-muted-foreground">
+                  {zones.length}
+                  {zones.length > 1 ? " zones" : " zone"}
+                </p>
+              </div>
+            </header>
+            <div className="mt-4 space-y-3">
+              {zones.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Aucun contour. Retournez à l&apos;étape de création pour en
+                  ajouter.
+                </p>
+              ) : (
+                zones.map((zone) => {
+                  const isSelected = selectedZoneId === zone.id;
+                  return (
+                    <button
+                      key={zone.id}
+                      onClick={() => handleSelectZone(zone.id)}
+                      className={cn(
+                        "w-full rounded-lg border px-3 py-2 text-left transition",
+                        isSelected
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border/60 bg-muted/30 hover:bg-muted/50"
+                      )}
+                    >
+                      <div className="flex items-center justify-between text-sm font-medium">
+                        <span>{zone.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {zone.points.length} point
+                          {zone.points.length > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {placements[zone.id]?.fileName ||
+                          "Aucune image assignée"}
+                      </p>
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </section>
         </aside>
       </div>

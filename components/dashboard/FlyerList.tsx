@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import type { FlyerLayoutSummary } from "@/lib/types";
 import { deleteFlyerLayout, listFlyerLayouts } from "@/lib/storage/flyers";
 import Loader from "../Loader";
+import { toast } from "sonner";
 
 export function FlyerList() {
   const [layouts, setLayouts] = useState<FlyerLayoutSummary[]>([]);
@@ -90,11 +91,18 @@ export function FlyerList() {
                 <Button asChild variant="outline" size="sm">
                   <Link href={`/layouts/${layout.id}/zones`}>Modifier</Link>
                 </Button>
-                <Button asChild variant="secondary" size="sm">
-                  <Link href={`/view/${layout.id}`} target="_blank">
-                    <Link2 className="size-4 transform -rotate-45" />
-                    Lien
-                  </Link>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      `${window.location.origin}/view/${layout.id}`
+                    );
+                    toast.success("Lien copié dans le presse-papiers");
+                  }}
+                >
+                  <Link2 className="size-4 transform -rotate-45" />
+                  Lien
                 </Button>
                 <Button
                   variant="outlineDestructive"
