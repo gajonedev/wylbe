@@ -89,11 +89,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const failureUrl = `${origin}/auth/error`;
 
     try {
-      await appwriteAccount.createOAuth2Session(
-        OAuthProvider.Google,
-        successUrl,
-        failureUrl
-      );
+      await appwriteAccount.createOAuth2Session({
+        provider: OAuthProvider.Google,
+        success: successUrl,
+        failure: failureUrl,
+      });
     } catch (err) {
       console.error("Google OAuth initialisation failed", err);
 
