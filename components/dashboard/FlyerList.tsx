@@ -91,7 +91,7 @@ export function FlyerList() {
                   <Link href={`/layouts/${layout.id}/zones`}>Modifier</Link>
                 </Button>
                 <Button asChild variant="secondary" size="sm">
-                  <Link href={`/layouts/${layout.id}/placements`}>
+                  <Link href={`/view/${layout.id}`} target="_blank">
                     <Link2 className="size-4 transform -rotate-45" />
                     Lien
                   </Link>

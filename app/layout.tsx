@@ -35,15 +35,6 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <header className="sticky top-0 right-0 z-30 w-full backdrop-blur-3xl border-b flex p-4 md:p-6 text-center justify-between text-2xl font-bold">
-              <Link href="/">
-                <h1 className="text-2xl font-bold text-primary">Wylbe</h1>
-              </Link>
-              <div className="flex items-center gap-4">
-                <Button>Soutenir</Button>
-                <Menu />
-              </div>
-            </header>
             {children}
             <footer className="w-full p-6 text-center text-xs text-muted-foreground">
               <p>
