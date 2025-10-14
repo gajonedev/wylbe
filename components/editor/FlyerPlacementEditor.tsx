@@ -330,7 +330,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
       <div className="flex flex-col gap-2 border-b border-border/40 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xl font-semibold uppercase tracking-wide">
-            Modifier le visuel
+            Ajouter une image
           </p>
           <Link
             href={`/layouts/${layoutMeta?.id}/zones`}
@@ -347,7 +347,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
               </Link>
             </Button>
           )} */}
-          <Button
+          {/* <Button
             // variant="outline"
             size="sm"
             onClick={handleExport}
@@ -355,7 +355,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
           >
             <Download />
             {isExporting ? "Export en cours…" : "Télécharger"}
-          </Button>
+          </Button> */}
           {/* <Button variant="destructive" size="sm" onClick={handleDeleteLayout}>
             Supprimer le flyer
           </Button> */}
@@ -380,6 +380,15 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
                   {showGuides ? "Masquer les repères" : "Afficher les repères"}
                 </Button>
               </div> */}
+              <Button
+                // variant="outline"
+                size="sm"
+                onClick={handleExport}
+                disabled={!flyer || isExporting}
+              >
+                <Download />
+                {isExporting ? "Export en cours…" : "Télécharger"}
+              </Button>
             </div>
 
             <FlyerStage
@@ -390,8 +399,8 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
           </section>
         </div>
 
-        <aside className="w-full space-y-6">
-          {/* <section className="rounded-2xl border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
+        <aside className="w-full lg:max-w-sm space-y-6">
+          <section className="border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
             <header className="flex items-center justify-between gap-2">
               <div>
                 <h2 className="text-lg font-semibold">Zones disponibles</h2>
@@ -437,7 +446,7 @@ export function FlyerPlacementEditor({ layoutId }: FlyerPlacementEditorProps) {
                 })
               )}
             </div>
-          </section> */}
+          </section>
 
           <section className="border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
             <div className="flex items-center justify-between gap-2">

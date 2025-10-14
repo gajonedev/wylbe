@@ -221,6 +221,15 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
     accept: { "image/*": [] },
     multiple: false,
     onDrop: handleFlyerDrop,
+    maxSize: 5 * 1024 * 1024, // 5MB
+    onDropRejected: (fileRejections) => {
+      const firstRejection = fileRejections[0];
+      if (firstRejection) {
+        setUploadError("Fichier trop volumineux. Taille maximale: 5MB.");
+        toast.error("Le fichier est trop volumineux.");
+      }
+    },
+    disabled: isSaving,
   });
 
   /**
@@ -413,12 +422,12 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
                       : "Déposez votre flyer ici"}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Formats supportés : PNG, JPG, SVG
+                    Formats supportés : PNG, JPG, SVG, etc (max 5MB).
                   </p>
                 </div>
               )}
               {uploadError && (
-                <p className="text-xs text-destructive">{uploadError}</p>
+                <p className="text-sm text-destructive">{uploadError}</p>
               )}
             </div>
           </section>
@@ -433,7 +442,7 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
                 <Button
                   variant={isDrawing ? "secondary" : "default"}
                   size="sm"
-                  disabled={!flyer}
+                  disabled={!flyer || isSaving}
                   onClick={toggleDrawMode}
                 >
                   {isDrawing ? "Terminer" : "Définir une zone"}
@@ -462,7 +471,7 @@ export function FlyerZoneBuilder({ existingLayout }: FlyerZoneBuilderProps) {
           </section>
         </div>
 
-        <aside className="w-full space-y-6">
+        <aside className="w-full lg:max-w-sm space-y-6">
           <section className="border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
             <h2 className="text-lg font-semibold">Informations</h2>
             <div className="mt-3 space-y-3">

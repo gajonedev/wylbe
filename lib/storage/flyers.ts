@@ -230,7 +230,7 @@ export async function loadFlyerLayout(id: string): Promise<FlyerLayout | null> {
 
   const { $id: authorId } = await appwriteAccount.get();
 
-  if (!authorId || !id || authorId !== id) {
+  if (!authorId || !id) {
     throw new Error("Access denied");
   }
 

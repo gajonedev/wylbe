@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  CircleAlert,
-  LayoutDashboard,
-  Loader,
-  LogOut,
-  MenuIcon,
-} from "lucide-react";
+import { LayoutDashboard, Loader, LogOut, MenuIcon } from "lucide-react";
 import { useAuth } from "./auth/AuthProvider";
 import { ThemeToggler } from "./ThemeToggler";
 import {
@@ -29,7 +23,7 @@ export default function Menu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="border p-1.5">
+      <DropdownMenuTrigger className="border p-1.5 hover:bg-accent/50 cursor-pointer">
         <MenuIcon className="h-6 w-6" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">

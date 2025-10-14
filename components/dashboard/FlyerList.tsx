@@ -46,7 +46,7 @@ export function FlyerList() {
       <div className="flex flex-col gap-3 border-b border-border/40 pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold">Bibliothèque</h1>
-          <p className="text-sm text-muted-foreground sm:max-w-64">
+          <p className="text-sm text-muted-foreground">
             Créez un nouveau layout ou reprenez-en un pour placer les photos.
           </p>
         </div>
@@ -75,8 +75,10 @@ export function FlyerList() {
               className="flex flex-col justify-between gap-4 border border-border/60 bg-card/60 p-5 shadow-sm backdrop-blur sm:flex-row sm:items-center"
             >
               <div className="space-y-2">
-                <h2 className="text-xl font-semibold">{layout.name}</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="text-xl font-semibold line-clamp-1">
+                  {layout.name}
+                </h2>
+                <p className="text-sm text-muted-foreground line-clamp-1">
                   {layout.fileName} • {layout.width} × {layout.height} px
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -84,7 +86,7 @@ export function FlyerList() {
                   {new Date(layout.updatedAt).toLocaleString()}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <Button asChild variant="outline" size="sm">
                   <Link href={`/layouts/${layout.id}/zones`}>Modifier</Link>
                 </Button>

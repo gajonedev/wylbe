@@ -1,4 +1,3 @@
-import { ThemeToggler } from "@/components/ThemeToggler";
 import FlyerZoneBuilder from "@/components/editor/FlyerZoneBuilder";
 
 export default function NewLayoutPage() {
