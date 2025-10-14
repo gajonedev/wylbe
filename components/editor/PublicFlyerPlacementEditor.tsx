@@ -18,6 +18,7 @@ import type { FlyerLayout } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   deleteFlyerLayout,
+  getPublicFlyer,
   loadFlyerLayout,
   saveFlyerLayout,
 } from "@/lib/storage/flyers";
@@ -30,7 +31,6 @@ interface FlyerPlacementEditorProps {
 export function PublicFlyerPlacementEditor({
   layoutId,
 }: FlyerPlacementEditorProps) {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [layoutMeta, setLayoutMeta] = useState<FlyerLayout["meta"] | null>(
@@ -68,10 +68,10 @@ export function PublicFlyerPlacementEditor({
 
   useEffect(() => {
     let cancelled = false;
+
     const load = async () => {
       try {
-        const layout = await loadFlyerLayout(layoutId);
-        console.log("Loaded layout", layout);
+        const layout = await getPublicFlyer(layoutId);
 
         if (!layout) {
           throw new Error("Flyer introuvable");
@@ -82,9 +82,11 @@ export function PublicFlyerPlacementEditor({
         flyerBlobRef.current = layout.flyerBlob;
         setLayoutMeta(layout.meta);
 
+        // Create flyer URL and store ref
         const flyerUrl = URL.createObjectURL(layout.flyerBlob);
         flyerUrlRef.current = flyerUrl;
 
+        // Set flyer
         setFlyer({
           url: flyerUrl,
           width: layout.meta.width,
@@ -92,8 +94,10 @@ export function PublicFlyerPlacementEditor({
           fileName: layout.meta.fileName,
         });
 
+        // Set zones
         setZones(layout.zones);
 
+        // Clear previous placements
         placementDataRef.current.clear();
         placementUrlsRef.current.forEach((value) => URL.revokeObjectURL(value));
         placementUrlsRef.current.clear();
@@ -102,9 +106,13 @@ export function PublicFlyerPlacementEditor({
           string,
           (typeof placements)[string]
         > = {};
+
+        // Setting up placements and creating object URLs for data URLs
         if (layout.placements && layout.placements.length > 0) {
           layout.placements.forEach((placement) => {
             let resolvedUrl = placement.url;
+
+            // Handle data URLs by converting to Blob and creating object URL
             if (placement.url.startsWith("data:")) {
               placementDataRef.current.set(placement.zoneId, placement.url);
               const blob = dataUrlToBlob(placement.url);
@@ -112,16 +120,17 @@ export function PublicFlyerPlacementEditor({
               placementUrlsRef.current.set(placement.zoneId, objectUrl);
               resolvedUrl = objectUrl;
             }
+
             normalizedPlacements[placement.zoneId] = {
               ...placement,
               url: resolvedUrl,
             };
           });
         }
+
         setPlacements(() => normalizedPlacements);
         setSelectedZoneId(layout.zones.at(0)?.id ?? null);
       } catch (loadError) {
-        console.error(loadError);
         if (!cancelled) {
           setError(
             loadError instanceof Error ? loadError.message : "Erreur inconnue"
@@ -206,24 +215,30 @@ export function PublicFlyerPlacementEditor({
 
   const handleRemovePlacement = useCallback(() => {
     if (!selectedZoneId) return;
+
     setPlacements((prev) => {
       if (!prev[selectedZoneId]) return prev;
       const next = { ...prev };
       delete next[selectedZoneId];
       return next;
     });
+
     const previousUrl = placementUrlsRef.current.get(selectedZoneId);
+
     if (previousUrl) {
       URL.revokeObjectURL(previousUrl);
       placementUrlsRef.current.delete(selectedZoneId);
     }
+
     placementDataRef.current.delete(selectedZoneId);
   }, [selectedZoneId, setPlacements]);
 
   const handleResetPlacement = useCallback(() => {
     if (!selectedZoneId) return;
+
     const zone = zones.find((item) => item.id === selectedZoneId);
     const placement = placements[selectedZoneId];
+
     if (!zone || !placement) return;
 
     const resetPlacement = computeInitialPlacement(
@@ -252,11 +267,10 @@ export function PublicFlyerPlacementEditor({
   ]);
 
   const handleExport = useCallback(async () => {
-    console.log("Exporting...", { flyer, stageRef });
-
     if (!flyer || !stageRef.current) return;
 
     setIsExporting(true);
+
     const stage = stageRef.current;
     const previousGuides = showGuides;
 
@@ -264,17 +278,21 @@ export function PublicFlyerPlacementEditor({
       if (previousGuides) {
         setShowGuides(false);
       }
+
       await new Promise<void>((resolve) =>
         requestAnimationFrame(() => resolve())
       );
+
       const pixelRatio = Math.max(1 / (stageScaleRef.current || 1), 1);
       const dataUrl = stage.toDataURL({ mimeType: "image/png", pixelRatio });
       const link = document.createElement("a");
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const baseName = layoutMeta?.name?.replace(/\.[^/.]+$/, "") ?? "flyer";
+
       link.download = `${baseName}-${timestamp}.png`;
       link.href = dataUrl;
       link.rel = "noopener";
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -282,9 +300,11 @@ export function PublicFlyerPlacementEditor({
       console.error("Erreur lors de l'export du flyer", exportError);
     } finally {
       setShowGuides(previousGuides);
+
       await new Promise<void>((resolve) =>
         requestAnimationFrame(() => resolve())
       );
+
       setIsExporting(false);
     }
   }, [
@@ -318,14 +338,16 @@ export function PublicFlyerPlacementEditor({
 
   if (error) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-4 py-20 text-center">
-        <p className="text-lg font-medium text-destructive">
-          Impossible de trouver l'affiche. Veuillez vous assurer que le lien est
-          correct.
-        </p>
-        {/* <Button onClick={() => router.push("/")}>
+      <div className="flex items-center justify-center flex-col min-h-screen w-full p-8">
+        <div className="flex flex-col items-center justify-center gap-4 p-8 text-center border border-destructive/50 bg-destructive/10 rounded">
+          <p className="text-lg font-medium text-destructive">
+            Impossible de trouver l'affiche. Veuillez vous assurer que le lien
+            est correct et que l'auteur a bien publié l'affiche.
+          </p>
+          {/* <Button onClick={() => router.push("/")}>
           Retour à l&apos;accueil
         </Button> */}
+        </div>
       </div>
     );
   }
@@ -521,13 +543,13 @@ export function PublicFlyerPlacementEditor({
             )}
           </section>
         </aside>
-        <p className="text-center mt-8 ">
-          Créez le votre{" "}
-          <Link href="/" className="underline font-medium hover:text-primary">
-            ici
-          </Link>
-        </p>
       </div>
+      <p className="text-center mt-8 ">
+        Créez le votre{" "}
+        <Link href="/" className="underline font-medium hover:text-primary">
+          ici
+        </Link>
+      </p>
     </div>
   );
 }

@@ -26,6 +26,7 @@ type FlyerDocument = Models.Document & {
   flyerFileId: string;
   zones?: Zone[] | string | null;
   placements?: Placement[];
+  isOnline?: boolean;
 };
 
 function assertRemoteStorageConfig() {
@@ -141,7 +142,12 @@ async function upsertFlyerFile(flyerId: string, blob: Blob, fileName: string) {
   });
 
   try {
-    await appwriteStorage.createFile(flyerBucketId!, flyerId, file);
+    await appwriteStorage.createFile({
+      bucketId: flyerBucketId!,
+      fileId: flyerId,
+      file,
+    });
+
     return flyerId;
   } catch (error) {
     if (
@@ -149,10 +155,18 @@ async function upsertFlyerFile(flyerId: string, blob: Blob, fileName: string) {
       typeof error.code === "number" &&
       error.code === 409
     ) {
-      await appwriteStorage.deleteFile(flyerBucketId!, flyerId).catch(() => {
-        /* ignore */
+      await appwriteStorage
+        .deleteFile({ bucketId: flyerBucketId!, fileId: flyerId })
+        .catch(() => {
+          /* ignore */
+        });
+
+      await appwriteStorage.createFile({
+        bucketId: flyerBucketId!,
+        fileId: flyerId,
+        file,
       });
-      await appwriteStorage.createFile(flyerBucketId!, flyerId, file);
+
       return flyerId;
     }
     throw error;
@@ -162,7 +176,10 @@ async function upsertFlyerFile(flyerId: string, blob: Blob, fileName: string) {
 async function fetchFlyerBlob(fileId: string): Promise<Blob> {
   assertRemoteStorageConfig();
 
-  const url = await appwriteStorage.getFileView(flyerBucketId!, fileId);
+  const url = await appwriteStorage.getFileView({
+    bucketId: flyerBucketId!,
+    fileId,
+  });
   const response = await fetch(url.toString());
 
   if (!response.ok) {
@@ -226,17 +243,21 @@ export async function saveFlyerLayout(layout: FlyerLayout) {
 }
 
 export async function loadFlyerLayout(id: string): Promise<FlyerLayout | null> {
-  await ensureRemoteReady();
+  // await ensureRemoteReady();
 
-  const { $id: authorId } = await appwriteAccount.get();
+  // const { $id: authorId } = await appwriteAccount.get();
 
-  if (!authorId || !id) {
-    throw new Error("Access denied");
-  }
+  // if (!authorId || !id) {
+  //   throw new Error("Access denied");
+  // }
 
   try {
     const document = asFlyerDocument(
-      await appwriteDatabases.getDocument(databaseId!, flyersCollectionId!, id)
+      await appwriteDatabases.getDocument({
+        databaseId,
+        collectionId: flyersCollectionId!,
+        documentId: id,
+      })
     );
 
     const flyerBlob = await fetchFlyerBlob(document.flyerFileId);
@@ -276,11 +297,11 @@ export async function listFlyerLayouts(): Promise<FlyerLayoutSummary[]> {
     throw new Error("User not authenticated");
   }
 
-  const result = await appwriteDatabases.listDocuments(
-    databaseId!,
-    flyersCollectionId!,
-    [Query.orderDesc("$updatedAt"), Query.equal("authorId", authorId)]
-  );
+  const result = await appwriteDatabases.listDocuments({
+    databaseId,
+    collectionId: flyersCollectionId!,
+    queries: [Query.orderDesc("$updatedAt"), Query.equal("authorId", authorId)],
+  });
 
   return result.documents.map((document) =>
     toFlyerSummary(asFlyerDocument(document))
@@ -298,13 +319,22 @@ export async function deleteFlyerLayout(id: string) {
 
   try {
     const document = asFlyerDocument(
-      await appwriteDatabases.getDocument(databaseId!, flyersCollectionId!, id)
+      await appwriteDatabases.getDocument({
+        databaseId,
+        collectionId: flyersCollectionId!,
+        documentId: id,
+      })
     );
 
     await Promise.all([
-      appwriteDatabases.deleteDocument(databaseId!, flyersCollectionId!, id),
+      appwriteDatabases.deleteDocument({
+        databaseId,
+        collectionId: flyersCollectionId!,
+        documentId: id,
+      }),
+
       appwriteStorage
-        .deleteFile(flyerBucketId!, document.flyerFileId)
+        .deleteFile({ bucketId: flyerBucketId!, fileId: document.flyerFileId })
         .catch(() => {
           /* ignore missing file */
         }),
@@ -325,8 +355,42 @@ export async function flyerExists(id: string) {
   await ensureRemoteReady();
 
   try {
-    await appwriteDatabases.getDocument(databaseId!, flyersCollectionId!, id);
+    await appwriteDatabases.getDocument({
+      databaseId,
+      collectionId: flyersCollectionId!,
+      documentId: id,
+    });
+
     return true;
+  } catch (error) {
+    if (
+      error instanceof AppwriteException &&
+      typeof error.code === "number" &&
+      error.code === 404
+    ) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+export async function getPublicFlyer(id: string) {
+  // await ensureRemoteReady();
+
+  try {
+    const document = asFlyerDocument(
+      await appwriteDatabases.getDocument({
+        databaseId,
+        collectionId: flyersCollectionId!,
+        documentId: id,
+      })
+    );
+
+    if (!document.isOnline) {
+      return null;
+    }
+
+    return await loadFlyerLayout(id);
   } catch (error) {
     if (
       error instanceof AppwriteException &&
