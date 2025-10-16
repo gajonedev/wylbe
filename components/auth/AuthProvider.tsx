@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const failureUrl = `${origin}/auth/error`;
 
     try {
-      await appwriteAccount.createOAuth2Session({
+      appwriteAccount.createOAuth2Session({
         provider: OAuthProvider.Google,
         success: successUrl,
         failure: failureUrl,
@@ -105,12 +105,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     setError(null);
+
     if (isMountedRef.current) {
       setIsProcessing(true);
     }
 
     try {
-      await appwriteAccount.deleteSession("current");
+      await appwriteAccount.deleteSession({ sessionId: "current" });
     } catch (err) {
       console.error("Appwrite sign-out failed", err);
       if (isMountedRef.current) {
